@@ -49,12 +49,12 @@ export const App: React.FC = () => {
   const [monitorToEdit, setMonitorToEdit] = useState<Monitor | null>(null);
   const [monitorToDelete, setMonitorToDelete] = useState<Monitor | null>(null);
 
-  // Collapsible project cards state (false/undefined = expanded, true = collapsed)
-  const [collapsedCardIds, setCollapsedCardIds] = useState<Record<string, boolean>>({});
+  // Collapsible project cards state (false/undefined = collapsed by default, true = expanded)
+  const [expandedCardIds, setExpandedCardIds] = useState<Record<string, boolean>>({});
 
   const toggleCardCollapse = (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setCollapsedCardIds((prev) => ({
+    setExpandedCardIds((prev) => ({
       ...prev,
       [id]: !prev[id],
     }));
@@ -417,18 +417,19 @@ export const App: React.FC = () => {
             </span>
             <button
               onClick={() => {
-                const areAnyCollapsed = filteredMonitors.some((m) => Boolean(collapsedCardIds[m.id]));
+                const areAllExpanded = filteredMonitors.length > 0 && filteredMonitors.every((m) => Boolean(expandedCardIds[m.id]));
+                const nextVal = !areAllExpanded;
                 const nextState: Record<string, boolean> = {};
                 filteredMonitors.forEach((m) => {
-                  nextState[m.id] = !areAnyCollapsed;
+                  nextState[m.id] = nextVal;
                 });
-                setCollapsedCardIds(nextState);
+                setExpandedCardIds(nextState);
               }}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#0D0D0D] hover:bg-[#151515] border border-[#242424] text-[#A1A1AA] hover:text-white transition-colors"
             >
               <ChevronsUpDown className="w-3.5 h-3.5 text-[#9929EA]" />
               <span>
-                {filteredMonitors.some((m) => Boolean(collapsedCardIds[m.id])) ? 'Expand All' : 'Collapse All'}
+                {filteredMonitors.length > 0 && filteredMonitors.every((m) => Boolean(expandedCardIds[m.id])) ? 'Collapse All' : 'Expand All'}
               </span>
             </button>
           </div>
@@ -481,7 +482,7 @@ export const App: React.FC = () => {
               const isChecking = m.status === 'checking';
               const isOnline = m.status === 'online';
               const expiryInfo = getExpiryCountdownIST(m.expiryDate);
-              const isExpanded = !collapsedCardIds[m.id];
+              const isExpanded = Boolean(expandedCardIds[m.id]);
 
               return (
                 <div
@@ -497,54 +498,69 @@ export const App: React.FC = () => {
                   {/* Card Header (Click to collapse or expand with smooth animation) */}
                   <div
                     onClick={() => toggleCardCollapse(m.id)}
-                    className="flex items-center justify-between gap-3 cursor-pointer select-none"
+                    className="cursor-pointer select-none"
                   >
-                    {/* Left: Status, Name, Badges */}
-                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 flex-wrap">
-                      <StatusBadge status={m.status} />
-                      <span className="font-semibold text-white text-sm sm:text-base tracking-tight truncate max-w-[140px] xs:max-w-[200px] sm:max-w-[280px] md:max-w-none">
-                        {m.name}
-                      </span>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <TypeBadge type={m.type} />
-                        <ProviderBadge provider={m.provider} />
+                    {/* Top Row: Status + Name on left, Expiry + Chevron on right */}
+                    <div className="flex items-center justify-between gap-2.5">
+                      {/* Left: Status Badge & Project Name (+ Badges on desktop) */}
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+                        <StatusBadge status={m.status} />
+                        <span className="font-semibold text-white text-sm sm:text-base tracking-tight truncate">
+                          {m.name}
+                        </span>
+                        {/* On sm screens and up, badges sit alongside the name */}
+                        <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
+                          <TypeBadge type={m.type} />
+                          <ProviderBadge provider={m.provider} />
+                        </div>
+                      </div>
+
+                      {/* Right: Quick glance stats + Animated Chevron */}
+                      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                        <div className="flex items-center gap-2 text-xs font-mono">
+                          <span className={`text-[11px] font-semibold flex items-center gap-1 ${
+                            expiryInfo.isExpired
+                              ? 'text-[#EF4444]'
+                              : expiryInfo.isUrgent
+                              ? 'text-[#F59E0B]'
+                              : 'text-[#08CB00]'
+                          }`}>
+                            <Clock className="w-3 h-3 flex-shrink-0" />
+                            <span>{expiryInfo.label}</span>
+                          </span>
+
+                          {isOnline && m.latencyMs && (
+                            <span className="hidden sm:inline-block text-[#08CB00] text-[11px]">
+                              {m.latencyMs}ms
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Animated Chevron Down */}
+                        <div
+                          className={`w-7 h-7 rounded-lg bg-[#141414] border border-[#242424] flex items-center justify-center text-[#A1A1AA] transition-all duration-300 flex-shrink-0 ${
+                            isExpanded ? 'bg-[#9929EA]/15 border-[#9929EA]/40 text-[#A855F7]' : 'hover:bg-[#1A1A1A] hover:text-white'
+                          }`}
+                          title={isExpanded ? 'Collapse project details' : 'Expand project details'}
+                        >
+                          <ChevronDown
+                            className={`w-4 h-4 transition-transform duration-300 ease-in-out ${
+                              isExpanded ? 'rotate-180' : 'rotate-0'
+                            }`}
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    {/* Right: Quick glance stats + Animated Chevron */}
-                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                      <div className="flex items-center gap-2 sm:gap-3 text-xs font-mono">
-                        <span className={`text-[11px] font-semibold flex items-center gap-1 ${
-                          expiryInfo.isExpired
-                            ? 'text-[#EF4444]'
-                            : expiryInfo.isUrgent
-                            ? 'text-[#F59E0B]'
-                            : 'text-[#08CB00]'
-                        }`}>
-                          <Clock className="w-3 h-3 flex-shrink-0" />
-                          <span>{expiryInfo.label}</span>
+                    {/* Mobile Badges Row: Only on mobile (< sm:), clean second line below title */}
+                    <div className="flex sm:hidden items-center gap-1.5 mt-2 flex-wrap">
+                      <TypeBadge type={m.type} />
+                      <ProviderBadge provider={m.provider} />
+                      {isOnline && m.latencyMs && (
+                        <span className="text-[10px] font-mono text-[#08CB00] bg-[#08CB00]/10 border border-[#08CB00]/20 px-1.5 py-0.5 rounded">
+                          {m.latencyMs}ms
                         </span>
-
-                        {isOnline && m.latencyMs && (
-                          <span className="hidden xs:inline-block text-[#08CB00] text-[11px]">
-                            {m.latencyMs}ms
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Animated Chevron Down */}
-                      <div
-                        className={`w-7 h-7 rounded-lg bg-[#141414] border border-[#242424] flex items-center justify-center text-[#A1A1AA] transition-all duration-300 ${
-                          isExpanded ? 'bg-[#9929EA]/15 border-[#9929EA]/40 text-[#A855F7]' : 'hover:bg-[#1A1A1A] hover:text-white'
-                        }`}
-                        title={isExpanded ? 'Collapse project details' : 'Expand project details'}
-                      >
-                        <ChevronDown
-                          className={`w-4 h-4 transition-transform duration-300 ease-in-out ${
-                            isExpanded ? 'rotate-180' : 'rotate-0'
-                          }`}
-                        />
-                      </div>
+                      )}
                     </div>
                   </div>
 
