@@ -7,6 +7,7 @@ import { TypeBadge } from './components/common/TypeBadge';
 import { ProviderBadge } from './components/common/ProviderBadge';
 import { MonitorModal } from './components/modals/MonitorModal';
 import { DeleteModal } from './components/modals/DeleteModal';
+import { UptimeOverviewCard } from './components/dashboard/UptimeOverviewCard';
 import { formatRelativeTime, getExpiryCountdownIST } from './utils/metrics';
 import { CustomDropdown, DropdownOption } from './components/common/CustomDropdown';
 import { 
@@ -272,67 +273,15 @@ export const App: React.FC = () => {
 
       {/* Main Container */}
       <main ref={containerRef} className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 space-y-6">
-        {/* Quick Stats Overview */}
-        <div ref={cardsRef} className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* Total Monitors */}
-          <div className="bg-[#0D0D0D] border border-[#242424] rounded-xl p-4 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[#A1A1AA] text-xs font-mono uppercase">
-              <span>Total Monitored</span>
-              <Layers className="w-4 h-4 text-[#66666F]" />
-            </div>
-            <div className="mt-2 text-2xl md:text-3xl font-bold font-mono text-white">
-              {totalCount}
-            </div>
-            <div className="text-[11px] text-[#66666F] font-mono mt-1">
-              Websites & Bots
-            </div>
-          </div>
-
-          {/* Online Count */}
-          <div className="bg-[#0D0D0D] border border-[#242424] hover:border-[#08CB00]/40 transition-colors rounded-xl p-4 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[#A1A1AA] text-xs font-mono uppercase">
-              <span>Online</span>
-              <CheckCircle2 className="w-4 h-4 text-[#08CB00]" />
-            </div>
-            <div className="mt-2 text-2xl md:text-3xl font-bold font-mono text-[#08CB00] flex items-center justify-between">
-              <span>{onlineCount}</span>
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-[#08CB00] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#08CB00]"></span>
-              </span>
-            </div>
-            <div className="text-[11px] text-[#08CB00] font-mono mt-1">
-              {totalCount > 0 ? `${Math.round((onlineCount / totalCount) * 100)}% Operational` : '0%'}
-            </div>
-          </div>
-
-          {/* Offline Count */}
-          <div className="bg-[#0D0D0D] border border-[#242424] hover:border-[#EF4444]/40 transition-colors rounded-xl p-4 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[#A1A1AA] text-xs font-mono uppercase">
-              <span>Offline</span>
-              <XCircle className="w-4 h-4 text-[#EF4444]" />
-            </div>
-            <div className="mt-2 text-2xl md:text-3xl font-bold font-mono text-[#EF4444]">
-              {offlineCount}
-            </div>
-            <div className="text-[11px] text-[#66666F] font-mono mt-1">
-              {offlineCount === 0 ? 'Zero Outages' : `${offlineCount} Down`}
-            </div>
-          </div>
-
-          {/* Average Latency */}
-          <div className="bg-[#0D0D0D] border border-[#242424] rounded-xl p-4 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[#A1A1AA] text-xs font-mono uppercase">
-              <span>Avg Ping</span>
-              <Zap className="w-4 h-4 text-[#9929EA]" />
-            </div>
-            <div className="mt-2 text-2xl md:text-3xl font-bold font-mono text-white">
-              {avgPing > 0 ? `${avgPing}ms` : '—'}
-            </div>
-            <div className="text-[11px] text-[#66666F] font-mono mt-1">
-              Response Speed
-            </div>
-          </div>
+        {/* Animated SVG Uptime & Performance Overview */}
+        <div ref={cardsRef}>
+          <UptimeOverviewCard
+            monitors={monitors}
+            totalCount={totalCount}
+            onlineCount={onlineCount}
+            offlineCount={offlineCount}
+            avgPing={avgPing}
+          />
         </div>
 
         {/* Toolbar: Filters & Search */}
