@@ -457,32 +457,39 @@ export const App: React.FC = () => {
                   }`}
                 >
                   {/* Left: Status, Name, and URL */}
-                  <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-                    <div className="pt-0.5 sm:pt-0">
+                  <div className="flex flex-col gap-2 min-w-0 flex-1">
+                    {/* Top Row: StatusBadge + Project Name (+ Badges on desktop) */}
+                    <div className="flex items-center gap-2.5 flex-wrap">
                       <StatusBadge status={m.status} />
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-white text-sm truncate">
-                          {m.name}
-                        </span>
+                      <span className="font-semibold text-white text-sm sm:text-base tracking-tight truncate">
+                        {m.name}
+                      </span>
+                      {/* On sm screens and up, badges sit alongside the name */}
+                      <div className="hidden sm:flex items-center gap-2">
                         <TypeBadge type={m.type} />
                         <ProviderBadge provider={m.provider} />
                       </div>
+                    </div>
 
-                      <div className="flex items-center gap-2 mt-1">
-                        <a
-                          href={m.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-mono text-xs text-[#66666F] hover:text-[#A1A1AA] truncate flex items-center gap-1 transition-colors"
-                          title={m.url}
-                        >
-                          <span className="truncate">{m.url}</span>
-                          <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-70" />
-                        </a>
-                      </div>
+                    {/* Mobile Badges Row: Grouped together cleanly on line 2 */}
+                    <div className="flex sm:hidden items-center gap-2 flex-wrap">
+                      <TypeBadge type={m.type} />
+                      <ProviderBadge provider={m.provider} />
+                    </div>
+
+                    {/* URL */}
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={m.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-mono text-xs text-[#66666F] hover:text-[#A1A1AA] truncate flex items-center gap-1.5 transition-colors"
+                        title={m.url}
+                      >
+                        <span className="truncate">{m.url}</span>
+                        <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-70" />
+                      </a>
+                    </div>
 
                       {/* Expiry Warning Alert Banner if expired or urgent */}
                       {expiryInfo.isExpired ? (
@@ -504,7 +511,6 @@ export const App: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  </div>
 
                   {/* Right: Hosting Expiry Countdown, Latency, Last Checked, and Actions */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between md:justify-end gap-3 md:gap-5 text-xs border-t md:border-t-0 border-[#242424]/60 pt-3 md:pt-0 w-full md:w-auto">
