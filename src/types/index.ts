@@ -17,6 +17,7 @@ export interface Monitor {
   latencyMs?: number;
   lastChecked?: string;
   errorMessage?: string;
+  githubRepo?: string; // Optional GitHub repository URL (e.g. https://github.com/owner/repo)
 }
 
 export type StatusFilter = 'all' | 'online' | 'offline';

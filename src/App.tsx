@@ -27,9 +27,12 @@ import {
   Server,
   Calendar,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Check,
+  Copy
 } from 'lucide-react';
 import gsap from 'gsap';
+import { GithubIcon } from './components/common/GithubIcon';
 
 export const App: React.FC = () => {
   const [monitors, setMonitors] = useState<Monitor[]>(() => StorageService.getMonitors());
@@ -43,6 +46,51 @@ export const App: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [monitorToEdit, setMonitorToEdit] = useState<Monitor | null>(null);
   const [monitorToDelete, setMonitorToDelete] = useState<Monitor | null>(null);
+
+  // GitHub Repo copied state
+  const [copiedRepoId, setCopiedRepoId] = useState<string | null>(null);
+
+  const handleCopyGithub = (repoUrl: string, id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    let fullUrl = repoUrl.trim();
+    if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+      fullUrl = `https://github.com/${fullUrl.replace(/^github\.com\//, '')}`;
+    }
+
+    const setSuccess = () => {
+      setCopiedRepoId(id);
+      setTimeout(() => {
+        setCopiedRepoId((prev) => (prev === id ? null : prev));
+      }, 2000);
+    };
+
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(fullUrl)
+        .then(setSuccess)
+        .catch(() => {
+          fallbackCopy(fullUrl, setSuccess);
+        });
+    } else {
+      fallbackCopy(fullUrl, setSuccess);
+    }
+  };
+
+  const fallbackCopy = (text: string, cb: () => void) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      document.execCommand('copy');
+      cb();
+    } catch (err) {
+      console.warn('Copy command failed', err);
+    }
+    document.body.removeChild(ta);
+  };
 
   // Splash opening animation
   const [showSplash, setShowSplash] = useState(true);
@@ -428,8 +476,8 @@ export const App: React.FC = () => {
                       <ProviderBadge provider={m.provider} />
                     </div>
 
-                    {/* URL */}
-                    <div className="flex items-center gap-2">
+                    {/* URL & GitHub Repo */}
+                    <div className="flex flex-wrap items-center gap-2">
                       <a
                         href={m.url}
                         target="_blank"
@@ -440,6 +488,29 @@ export const App: React.FC = () => {
                         <span className="truncate">{m.url}</span>
                         <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-70" />
                       </a>
+
+                      {m.githubRepo && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleCopyGithub(m.githubRepo!, m.id, e)}
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border font-mono text-[11px] transition-all ${
+                            copiedRepoId === m.id
+                              ? 'bg-[#08CB00]/20 border-[#08CB00] text-[#08CB00] shadow-[0_0_10px_rgba(8,203,0,0.3)]'
+                              : 'bg-[#0D0D0D] hover:bg-[#151515] border-[#242424] text-[#A1A1AA] hover:text-white'
+                          }`}
+                          title={copiedRepoId === m.id ? 'Copied to clipboard!' : `Click to copy: ${m.githubRepo}`}
+                        >
+                          <GithubIcon className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate max-w-[130px] sm:max-w-[200px]">
+                            {m.githubRepo.replace(/^https?:\/\/github\.com\//, '')}
+                          </span>
+                          {copiedRepoId === m.id ? (
+                            <Check className="w-2.5 h-2.5 text-[#08CB00]" />
+                          ) : (
+                            <Copy className="w-2.5 h-2.5 opacity-60" />
+                          )}
+                        </button>
+                      )}
                     </div>
 
                       {/* Expiry Warning Alert Banner if expired or urgent */}
@@ -530,6 +601,45 @@ export const App: React.FC = () => {
                         <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin text-[#9929EA]' : ''}`} />
                         <span>Check</span>
                       </button>
+
+                      {/* GitHub Copy Button */}
+                      {m.githubRepo ? (
+                        <button
+                          onClick={(e) => handleCopyGithub(m.githubRepo!, m.id, e)}
+                          className={`flex-1 md:flex-initial py-1.5 px-3 md:px-2.5 rounded-lg border transition-all flex items-center justify-center gap-1.5 text-xs ${
+                            copiedRepoId === m.id
+                              ? 'bg-[#08CB00]/20 border-[#08CB00] text-[#08CB00] shadow-[0_0_12px_rgba(8,203,0,0.3)]'
+                              : 'bg-[#121212] hover:bg-[#1A1A1A] border-[#242424] text-[#A1A1AA] hover:text-white hover:border-[#9929EA]/60'
+                          }`}
+                          title={copiedRepoId === m.id ? 'Copied to clipboard!' : `Copy GitHub repo: ${m.githubRepo}`}
+                          aria-label="Copy GitHub Repository"
+                        >
+                          {copiedRepoId === m.id ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-[#08CB00]" />
+                              <span className="text-[11px] font-mono font-semibold text-[#08CB00]">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <GithubIcon className="w-3.5 h-3.5 text-white" />
+                              <span className="md:hidden font-mono text-[11px]">Repo</span>
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setMonitorToEdit(m);
+                            setIsModalOpen(true);
+                          }}
+                          className="flex-1 md:flex-initial py-1.5 px-3 md:px-2.5 rounded-lg bg-[#121212] hover:bg-[#1A1A1A] border border-[#242424] text-[#4E4E58] hover:text-[#A1A1AA] transition-colors flex items-center justify-center gap-1.5 text-xs"
+                          title="No GitHub repo linked — Click to add"
+                          aria-label="Add GitHub Repository"
+                        >
+                          <GithubIcon className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                          <span className="md:hidden font-mono text-[11px]">Repo</span>
+                        </button>
+                      )}
 
                       <button
                         onClick={() => {

@@ -3,6 +3,7 @@ import { Monitor, MonitorType, ProviderType } from '../../types';
 import { MonitoringEngine } from '../../services/monitoringEngine';
 import { addDaysIST, getExpiryCountdownIST } from '../../utils/metrics';
 import { X, Check, Loader2, Sparkles, Globe, Bot, Server, Clock, AlertTriangle } from 'lucide-react';
+import { GithubIcon } from '../common/GithubIcon';
 
 interface MonitorModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const MonitorModal: React.FC<MonitorModalProps> = ({
   const [hostingDays, setHostingDays] = useState<number>(7);
   const [expiryDate, setExpiryDate] = useState<string>(addDaysIST(7));
   const [url, setUrl] = useState('');
+  const [githubRepo, setGithubRepo] = useState('');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ status: 'online' | 'offline'; latencyMs?: number; error?: string } | null>(null);
 
@@ -34,6 +36,7 @@ export const MonitorModal: React.FC<MonitorModalProps> = ({
       setExpiryDate(initialMonitor.expiryDate ? initialMonitor.expiryDate.split('T')[0] : addDaysIST(7));
       setHostingDays(initialMonitor.hostingDays || 7);
       setUrl(initialMonitor.url);
+      setGithubRepo(initialMonitor.githubRepo || '');
     } else {
       setName('');
       setType('website');
@@ -41,6 +44,7 @@ export const MonitorModal: React.FC<MonitorModalProps> = ({
       setHostingDays(7);
       setExpiryDate(addDaysIST(7));
       setUrl('https://');
+      setGithubRepo('');
     }
     setTestResult(null);
   }, [initialMonitor, isOpen]);
@@ -94,6 +98,11 @@ export const MonitorModal: React.FC<MonitorModalProps> = ({
       expiryDate: expiryDate || addDaysIST(hostingDays || 7),
       hostingDays,
       url: url.trim(),
+      githubRepo: githubRepo.trim()
+        ? githubRepo.trim().startsWith('http://') || githubRepo.trim().startsWith('https://')
+          ? githubRepo.trim()
+          : `https://github.com/${githubRepo.trim().replace(/^github\.com\//, '')}`
+        : undefined,
       status: initialMonitor ? initialMonitor.status : 'checking',
       latencyMs: initialMonitor?.latencyMs,
       lastChecked: initialMonitor?.lastChecked,
@@ -344,6 +353,32 @@ export const MonitorModal: React.FC<MonitorModalProps> = ({
               </span>
             </div>
           )}
+
+          {/* GitHub Repository (Optional) */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[#A1A1AA] font-mono uppercase text-[11px] flex items-center gap-1.5">
+                <GithubIcon className="w-3.5 h-3.5 text-[#9929EA]" />
+                <span>GitHub Repository</span>
+              </label>
+              <span className="text-[10px] text-[#66666F] font-mono lowercase">optional</span>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="https://github.com/username/repository"
+                value={githubRepo}
+                onChange={(e) => setGithubRepo(e.target.value)}
+                className="w-full bg-[#080808] border border-[#242424] rounded-lg pl-8 pr-3 py-2 font-mono text-white text-xs focus:outline-none focus:border-[#9929EA] placeholder:text-[#44444D]"
+              />
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#66666F] pointer-events-none">
+                <GithubIcon className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="text-[10px] text-[#66666F] font-mono mt-1">
+              Add your repo link to get a quick 1-click copy GitHub icon on your project card.
+            </div>
+          </div>
 
           {/* Actions */}
           <div className="pt-3 border-t border-[#242424] flex items-center justify-end gap-2">
