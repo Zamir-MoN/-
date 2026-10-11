@@ -29,7 +29,9 @@ import {
   Clock,
   AlertTriangle,
   Check,
-  Copy
+  Copy,
+  ChevronDown,
+  ChevronsUpDown
 } from 'lucide-react';
 import gsap from 'gsap';
 import { GithubIcon } from './components/common/GithubIcon';
@@ -46,6 +48,17 @@ export const App: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [monitorToEdit, setMonitorToEdit] = useState<Monitor | null>(null);
   const [monitorToDelete, setMonitorToDelete] = useState<Monitor | null>(null);
+
+  // Collapsible project cards state (false/undefined = expanded, true = collapsed)
+  const [collapsedCardIds, setCollapsedCardIds] = useState<Record<string, boolean>>({});
+
+  const toggleCardCollapse = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setCollapsedCardIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   // GitHub Repo copied state
   const [copiedRepoId, setCopiedRepoId] = useState<string | null>(null);
@@ -396,6 +409,31 @@ export const App: React.FC = () => {
           </div>
         </div>
 
+        {/* Header row above cards: Count & Collapse/Expand toggle */}
+        {filteredMonitors.length > 0 && (
+          <div className="flex items-center justify-between text-xs font-mono text-[#66666F] px-1 mb-2.5">
+            <span>
+              Showing {filteredMonitors.length} {filteredMonitors.length === 1 ? 'project' : 'projects'}
+            </span>
+            <button
+              onClick={() => {
+                const areAnyCollapsed = filteredMonitors.some((m) => Boolean(collapsedCardIds[m.id]));
+                const nextState: Record<string, boolean> = {};
+                filteredMonitors.forEach((m) => {
+                  nextState[m.id] = !areAnyCollapsed;
+                });
+                setCollapsedCardIds(nextState);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#0D0D0D] hover:bg-[#151515] border border-[#242424] text-[#A1A1AA] hover:text-white transition-colors"
+            >
+              <ChevronsUpDown className="w-3.5 h-3.5 text-[#9929EA]" />
+              <span>
+                {filteredMonitors.some((m) => Boolean(collapsedCardIds[m.id])) ? 'Expand All' : 'Collapse All'}
+              </span>
+            </button>
+          </div>
+        )}
+
         {/* Monitors List / Cards */}
         {monitors.length === 0 ? (
           <div className="p-12 text-center bg-[#0D0D0D] border border-[#242424] rounded-xl">
@@ -443,224 +481,279 @@ export const App: React.FC = () => {
               const isChecking = m.status === 'checking';
               const isOnline = m.status === 'online';
               const expiryInfo = getExpiryCountdownIST(m.expiryDate);
+              const isExpanded = !collapsedCardIds[m.id];
 
               return (
                 <div
                   key={m.id}
-                  className={`bg-[#0D0D0D] border transition-all rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 group ${
+                  className={`bg-[#0D0D0D] border transition-all duration-200 rounded-xl p-3.5 sm:p-4 group ${
                     expiryInfo.isExpired 
                       ? 'border-[#EF4444]/40 hover:border-[#EF4444]/70 bg-[#0D0D0D]/90'
                       : expiryInfo.isUrgent 
                       ? 'border-[#F59E0B]/30 hover:border-[#F59E0B]/60' 
-                      : 'border-[#242424] hover:border-[#333333]'
+                      : 'border-[#242424] hover:border-[#383838]'
                   }`}
                 >
-                  {/* Left: Status, Name, and URL */}
-                  <div className="flex flex-col gap-2 min-w-0 flex-1">
-                    {/* Top Row: StatusBadge + Project Name (+ Badges on desktop) */}
-                    <div className="flex items-center gap-2.5 flex-wrap">
+                  {/* Card Header (Click to collapse or expand with smooth animation) */}
+                  <div
+                    onClick={() => toggleCardCollapse(m.id)}
+                    className="flex items-center justify-between gap-3 cursor-pointer select-none"
+                  >
+                    {/* Left: Status, Name, Badges */}
+                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 flex-wrap">
                       <StatusBadge status={m.status} />
-                      <span className="font-semibold text-white text-sm sm:text-base tracking-tight truncate">
+                      <span className="font-semibold text-white text-sm sm:text-base tracking-tight truncate max-w-[140px] xs:max-w-[200px] sm:max-w-[280px] md:max-w-none">
                         {m.name}
                       </span>
-                      {/* On sm screens and up, badges sit alongside the name */}
-                      <div className="hidden sm:flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <TypeBadge type={m.type} />
                         <ProviderBadge provider={m.provider} />
                       </div>
                     </div>
 
-                    {/* Mobile Badges Row: Grouped together cleanly on line 2 */}
-                    <div className="flex sm:hidden items-center gap-2 flex-wrap">
-                      <TypeBadge type={m.type} />
-                      <ProviderBadge provider={m.provider} />
-                    </div>
-
-                    {/* URL & GitHub Repo */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <a
-                        href={m.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-mono text-xs text-[#66666F] hover:text-[#A1A1AA] truncate flex items-center gap-1.5 transition-colors"
-                        title={m.url}
-                      >
-                        <span className="truncate">{m.url}</span>
-                        <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-70" />
-                      </a>
-
-                      {m.githubRepo && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopyGithub(m.githubRepo!, m.id, e)}
-                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border font-mono text-[11px] transition-all ${
-                            copiedRepoId === m.id
-                              ? 'bg-[#08CB00]/20 border-[#08CB00] text-[#08CB00] shadow-[0_0_10px_rgba(8,203,0,0.3)]'
-                              : 'bg-[#0D0D0D] hover:bg-[#151515] border-[#242424] text-[#A1A1AA] hover:text-white'
-                          }`}
-                          title={copiedRepoId === m.id ? 'Copied to clipboard!' : `Click to copy: ${m.githubRepo}`}
-                        >
-                          <GithubIcon className="w-3 h-3 flex-shrink-0" />
-                          <span className="truncate max-w-[130px] sm:max-w-[200px]">
-                            {m.githubRepo.replace(/^https?:\/\/github\.com\//, '')}
-                          </span>
-                          {copiedRepoId === m.id ? (
-                            <Check className="w-2.5 h-2.5 text-[#08CB00]" />
-                          ) : (
-                            <Copy className="w-2.5 h-2.5 opacity-60" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-
-                      {/* Expiry Warning Alert Banner if expired or urgent */}
-                      {expiryInfo.isExpired ? (
-                        <div className="text-[11px] text-[#EF4444] font-mono mt-1 font-semibold flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          <span>Hosting period ended — Please re-host on a new VPS or platform!</span>
-                        </div>
-                      ) : expiryInfo.isUrgent ? (
-                        <div className="text-[11px] text-[#F59E0B] font-mono mt-1 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>Expires soon ({expiryInfo.label}) — Prepare backup/new VPS</span>
-                        </div>
-                      ) : null}
-
-                      {/* Error explanation if offline */}
-                      {m.status === 'offline' && m.errorMessage && (
-                        <div className="text-[11px] text-[#EF4444] font-mono mt-1">
-                          {m.errorMessage}
-                        </div>
-                      )}
-                    </div>
-
-                  {/* Right: Hosting Expiry Countdown, Latency, Last Checked, and Actions */}
-                  <div className="flex flex-col md:flex-row md:items-center justify-between md:justify-end gap-3 md:gap-5 text-xs border-t md:border-t-0 border-[#242424]/60 pt-3 md:pt-0 w-full md:w-auto">
-                    {/* Metrics Panel (3-column grid on mobile, inline on desktop) */}
-                    <div className="grid grid-cols-3 gap-2 bg-[#080808] p-2.5 rounded-lg border border-[#1A1A1A] md:bg-transparent md:p-0 md:border-0 md:flex md:items-center md:gap-5">
-                      {/* Hosting Expiry & Re-host countdown (IST) */}
-                      <div className="text-left md:text-right flex-shrink-0">
-                        <span className="text-[10px] font-mono uppercase text-[#66666F] block truncate">
-                          Host (IST)
-                        </span>
-                        <span className={`font-mono font-semibold flex items-center gap-1 justify-start md:justify-end text-[11px] whitespace-nowrap ${
+                    {/* Right: Quick glance stats + Animated Chevron */}
+                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                      <div className="flex items-center gap-2 sm:gap-3 text-xs font-mono">
+                        <span className={`text-[11px] font-semibold flex items-center gap-1 ${
                           expiryInfo.isExpired
                             ? 'text-[#EF4444]'
                             : expiryInfo.isUrgent
                             ? 'text-[#F59E0B]'
                             : 'text-[#08CB00]'
                         }`}>
-                          {expiryInfo.isExpired ? (
-                            <>
-                              <AlertTriangle className="w-3 h-3 text-[#EF4444] animate-pulse flex-shrink-0" />
-                              <span>Expired</span>
-                            </>
-                          ) : (
-                            <>
-                              <Clock className={`w-3 h-3 flex-shrink-0 ${expiryInfo.isUrgent ? 'text-[#F59E0B]' : 'text-[#9929EA]'}`} />
-                              <span>{expiryInfo.label}</span>
-                            </>
-                          )}
+                          <Clock className="w-3 h-3 flex-shrink-0" />
+                          <span>{expiryInfo.label}</span>
                         </span>
-                      </div>
 
-                      {/* Ping / Latency */}
-                      <div className="text-left md:text-right flex-shrink-0">
-                        <span className="text-[10px] font-mono uppercase text-[#66666F] block">Ping</span>
-                        <span className={`font-mono font-medium ${isOnline ? 'text-[#08CB00]' : 'text-[#66666F]'}`}>
-                          {isOnline && m.latencyMs ? `${m.latencyMs}ms` : '—'}
-                        </span>
-                      </div>
-
-                      {/* Last Checked & Live 5s Countdown */}
-                      <div className="text-left md:text-right flex-shrink-0">
-                        <div className="flex items-center md:justify-end gap-1 mb-0.5">
-                          <span className="text-[10px] font-mono uppercase text-[#66666F]">Checked</span>
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-[#08CB00]">
-                            <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#08CB00] opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#08CB00]"></span>
-                            </span>
-                            <span>{isSilentSyncing ? 'Sync' : `${countdown}s`}</span>
+                        {isOnline && m.latencyMs && (
+                          <span className="hidden xs:inline-block text-[#08CB00] text-[11px]">
+                            {m.latencyMs}ms
                           </span>
-                        </div>
-                        <span className="font-mono text-[#A1A1AA] text-xs block truncate">
-                          {formatRelativeTime(m.lastChecked)}
-                        </span>
+                        )}
+                      </div>
+
+                      {/* Animated Chevron Down */}
+                      <div
+                        className={`w-7 h-7 rounded-lg bg-[#141414] border border-[#242424] flex items-center justify-center text-[#A1A1AA] transition-all duration-300 ${
+                          isExpanded ? 'bg-[#9929EA]/15 border-[#9929EA]/40 text-[#A855F7]' : 'hover:bg-[#1A1A1A] hover:text-white'
+                        }`}
+                        title={isExpanded ? 'Collapse project details' : 'Expand project details'}
+                      >
+                        <ChevronDown
+                          className={`w-4 h-4 transition-transform duration-300 ease-in-out ${
+                            isExpanded ? 'rotate-180' : 'rotate-0'
+                          }`}
+                        />
                       </div>
                     </div>
+                  </div>
 
-                    {/* Action buttons (Clean thumb-friendly buttons on mobile, compact on desktop) */}
-                    <div className="flex items-center gap-2 w-full md:w-auto md:ml-1">
-                      <button
-                        onClick={() => handleCheckSingle(m)}
-                        disabled={isChecking}
-                        className="flex-1 md:flex-initial px-3 py-1.5 rounded-lg bg-[#121212] hover:bg-[#1A1A1A] border border-[#242424] text-[#A1A1AA] hover:text-white transition-colors flex items-center justify-center gap-1.5 text-xs font-medium"
-                        title="Check this monitor now"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin text-[#9929EA]' : ''}`} />
-                        <span>Check</span>
-                      </button>
+                  {/* Collapsible / Expandable Details Section with Smooth Animation */}
+                  <div
+                    className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
+                      isExpanded
+                        ? 'grid-rows-[1fr] opacity-100 mt-3 pt-3 border-t border-[#242424]/60'
+                        : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+                    }`}
+                  >
+                    <div className="overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      {/* Left: URL, GitHub Repo Pill, and Alerts */}
+                      <div className="flex flex-col gap-2 min-w-0 flex-1">
+                        {/* URL & GitHub Repo */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <a
+                            href={m.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-xs text-[#66666F] hover:text-[#A1A1AA] truncate flex items-center gap-1.5 transition-colors"
+                            title={m.url}
+                          >
+                            <span className="truncate">{m.url}</span>
+                            <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-70" />
+                          </a>
 
-                      {/* GitHub Copy Button */}
-                      {m.githubRepo ? (
-                        <button
-                          onClick={(e) => handleCopyGithub(m.githubRepo!, m.id, e)}
-                          className={`flex-1 md:flex-initial py-1.5 px-3 md:px-2.5 rounded-lg border transition-all flex items-center justify-center gap-1.5 text-xs ${
-                            copiedRepoId === m.id
-                              ? 'bg-[#08CB00]/20 border-[#08CB00] text-[#08CB00] shadow-[0_0_12px_rgba(8,203,0,0.3)]'
-                              : 'bg-[#121212] hover:bg-[#1A1A1A] border-[#242424] text-[#A1A1AA] hover:text-white hover:border-[#9929EA]/60'
-                          }`}
-                          title={copiedRepoId === m.id ? 'Copied to clipboard!' : `Copy GitHub repo: ${m.githubRepo}`}
-                          aria-label="Copy GitHub Repository"
-                        >
-                          {copiedRepoId === m.id ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-[#08CB00]" />
-                              <span className="text-[11px] font-mono font-semibold text-[#08CB00]">Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <GithubIcon className="w-3.5 h-3.5 text-white" />
-                              <span className="md:hidden font-mono text-[11px]">Repo</span>
-                            </>
+                          {m.githubRepo && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleCopyGithub(m.githubRepo!, m.id, e)}
+                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border font-mono text-[11px] transition-all ${
+                                copiedRepoId === m.id
+                                  ? 'bg-[#08CB00]/20 border-[#08CB00] text-[#08CB00] shadow-[0_0_10px_rgba(8,203,0,0.3)]'
+                                  : 'bg-[#0D0D0D] hover:bg-[#151515] border-[#242424] text-[#A1A1AA] hover:text-white'
+                              }`}
+                              title={copiedRepoId === m.id ? 'Copied to clipboard!' : `Click to copy: ${m.githubRepo}`}
+                            >
+                              <GithubIcon className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate max-w-[130px] sm:max-w-[200px]">
+                                {m.githubRepo.replace(/^https?:\/\/github\.com\//, '')}
+                              </span>
+                              {copiedRepoId === m.id ? (
+                                <Check className="w-2.5 h-2.5 text-[#08CB00]" />
+                              ) : (
+                                <Copy className="w-2.5 h-2.5 opacity-60" />
+                              )}
+                            </button>
                           )}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setMonitorToEdit(m);
-                            setIsModalOpen(true);
-                          }}
-                          className="flex-1 md:flex-initial py-1.5 px-3 md:px-2.5 rounded-lg bg-[#121212] hover:bg-[#1A1A1A] border border-[#242424] text-[#4E4E58] hover:text-[#A1A1AA] transition-colors flex items-center justify-center gap-1.5 text-xs"
-                          title="No GitHub repo linked — Click to add"
-                          aria-label="Add GitHub Repository"
-                        >
-                          <GithubIcon className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
-                          <span className="md:hidden font-mono text-[11px]">Repo</span>
-                        </button>
-                      )}
+                        </div>
 
-                      <button
-                        onClick={() => {
-                          setMonitorToEdit(m);
-                          setIsModalOpen(true);
-                        }}
-                        className="flex-1 md:flex-initial py-1.5 px-3 md:px-2 rounded-lg bg-[#121212] hover:bg-[#1A1A1A] border border-[#242424] text-[#66666F] hover:text-white transition-colors flex items-center justify-center gap-1.5 text-xs"
-                        title="Edit monitor"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span className="md:hidden">Edit</span>
-                      </button>
+                        {/* Expiry Warning Alert Banner */}
+                        {expiryInfo.isExpired ? (
+                          <div className="text-[11px] text-[#EF4444] font-mono mt-1 font-semibold flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                            <span>Hosting period ended — Please re-host on a new VPS or platform!</span>
+                          </div>
+                        ) : expiryInfo.isUrgent ? (
+                          <div className="text-[11px] text-[#F59E0B] font-mono mt-1 flex items-center gap-1">
+                            <Clock className="w-3 h-3 flex-shrink-0" />
+                            <span>Expires soon ({expiryInfo.label}) — Prepare backup/new VPS</span>
+                          </div>
+                        ) : null}
 
-                      <button
-                        onClick={() => setMonitorToDelete(m)}
-                        className="flex-1 md:flex-initial py-1.5 px-3 md:px-2 rounded-lg bg-[#121212] hover:bg-[#EF4444]/20 border border-[#242424] text-[#66666F] hover:text-[#EF4444] transition-colors flex items-center justify-center gap-1.5 text-xs"
-                        title="Delete monitor"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span className="md:hidden">Delete</span>
-                      </button>
+                        {/* Error explanation if offline */}
+                        {m.status === 'offline' && m.errorMessage && (
+                          <div className="text-[11px] text-[#EF4444] font-mono mt-1">
+                            {m.errorMessage}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Metrics Panel + Mobile-Friendly Action Buttons */}
+                      <div className="flex flex-col md:flex-row md:items-center justify-between md:justify-end gap-3 md:gap-5 text-xs w-full md:w-auto">
+                        {/* Metrics Panel (3-column grid on mobile, inline on desktop) */}
+                        <div className="grid grid-cols-3 gap-2 bg-[#080808] p-2.5 rounded-lg border border-[#1A1A1A] md:bg-transparent md:p-0 md:border-0 md:flex md:items-center md:gap-5">
+                          {/* Hosting Expiry & Re-host countdown (IST) */}
+                          <div className="text-left md:text-right flex-shrink-0 min-w-0">
+                            <span className="text-[10px] font-mono uppercase text-[#66666F] block truncate">
+                              Host (IST)
+                            </span>
+                            <span className={`font-mono font-semibold flex items-center gap-1 justify-start md:justify-end text-[11px] whitespace-nowrap ${
+                              expiryInfo.isExpired
+                                ? 'text-[#EF4444]'
+                                : expiryInfo.isUrgent
+                                ? 'text-[#F59E0B]'
+                                : 'text-[#08CB00]'
+                            }`}>
+                              {expiryInfo.isExpired ? (
+                                <>
+                                  <AlertTriangle className="w-3 h-3 text-[#EF4444] animate-pulse flex-shrink-0" />
+                                  <span>Expired</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className={`w-3 h-3 flex-shrink-0 ${expiryInfo.isUrgent ? 'text-[#F59E0B]' : 'text-[#9929EA]'}`} />
+                                  <span>{expiryInfo.label}</span>
+                                </>
+                              )}
+                            </span>
+                          </div>
+
+                          {/* Ping / Latency */}
+                          <div className="text-left md:text-right flex-shrink-0 min-w-0">
+                            <span className="text-[10px] font-mono uppercase text-[#66666F] block truncate">Ping</span>
+                            <span className={`font-mono font-medium truncate ${isOnline ? 'text-[#08CB00]' : 'text-[#66666F]'}`}>
+                              {isOnline && m.latencyMs ? `${m.latencyMs}ms` : '—'}
+                            </span>
+                          </div>
+
+                          {/* Last Checked & Live 5s Countdown */}
+                          <div className="text-left md:text-right flex-shrink-0 min-w-0">
+                            <div className="flex items-center md:justify-end gap-1 mb-0.5 truncate">
+                              <span className="text-[10px] font-mono uppercase text-[#66666F]">Checked</span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-[#08CB00]">
+                                <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#08CB00] opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#08CB00]"></span>
+                                </span>
+                                <span>{isSilentSyncing ? 'Sync' : `${countdown}s`}</span>
+                              </span>
+                            </div>
+                            <span className="font-mono text-[#A1A1AA] text-xs block truncate">
+                              {formatRelativeTime(m.lastChecked)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action buttons (Clean 2x2 grid on mobile, 4-col on sm, inline flex on md) */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:items-center gap-2 w-full md:w-auto md:ml-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCheckSingle(m);
+                            }}
+                            disabled={isChecking}
+                            className="w-full md:w-auto px-3 py-2 md:py-1.5 rounded-lg bg-[#121212] hover:bg-[#1A1A1A] border border-[#242424] text-[#A1A1AA] hover:text-white transition-colors flex items-center justify-center gap-1.5 text-xs font-medium"
+                            title="Check this monitor now"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin text-[#9929EA]' : ''}`} />
+                            <span>Check</span>
+                          </button>
+
+                          {/* GitHub Copy Button */}
+                          {m.githubRepo ? (
+                            <button
+                              onClick={(e) => handleCopyGithub(m.githubRepo!, m.id, e)}
+                              className={`w-full md:w-auto py-2 md:py-1.5 px-3 md:px-2.5 rounded-lg border transition-all flex items-center justify-center gap-1.5 text-xs ${
+                                copiedRepoId === m.id
+                                  ? 'bg-[#08CB00]/20 border-[#08CB00] text-[#08CB00] shadow-[0_0_12px_rgba(8,203,0,0.3)]'
+                                  : 'bg-[#121212] hover:bg-[#1A1A1A] border-[#242424] text-[#A1A1AA] hover:text-white hover:border-[#9929EA]/60'
+                              }`}
+                              title={copiedRepoId === m.id ? 'Copied to clipboard!' : `Copy GitHub repo: ${m.githubRepo}`}
+                              aria-label="Copy GitHub Repository"
+                            >
+                              {copiedRepoId === m.id ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-[#08CB00]" />
+                                  <span className="text-[11px] font-mono font-semibold text-[#08CB00]">Copied!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <GithubIcon className="w-3.5 h-3.5 text-white" />
+                                  <span>Repo</span>
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMonitorToEdit(m);
+                                setIsModalOpen(true);
+                              }}
+                              className="w-full md:w-auto py-2 md:py-1.5 px-3 md:px-2.5 rounded-lg bg-[#121212] hover:bg-[#1A1A1A] border border-[#242424] text-[#4E4E58] hover:text-[#A1A1AA] transition-colors flex items-center justify-center gap-1.5 text-xs"
+                              title="No GitHub repo linked — Click to add"
+                              aria-label="Add GitHub Repository"
+                            >
+                              <GithubIcon className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                              <span>Repo</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMonitorToEdit(m);
+                              setIsModalOpen(true);
+                            }}
+                            className="w-full md:w-auto py-2 md:py-1.5 px-3 md:px-2 rounded-lg bg-[#121212] hover:bg-[#1A1A1A] border border-[#242424] text-[#66666F] hover:text-white transition-colors flex items-center justify-center gap-1.5 text-xs"
+                            title="Edit monitor"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMonitorToDelete(m);
+                            }}
+                            className="w-full md:w-auto py-2 md:py-1.5 px-3 md:px-2 rounded-lg bg-[#121212] hover:bg-[#EF4444]/20 border border-[#242424] text-[#66666F] hover:text-[#EF4444] transition-colors flex items-center justify-center gap-1.5 text-xs"
+                            title="Delete monitor"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
