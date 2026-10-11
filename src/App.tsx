@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Monitor, StatusFilter, TypeFilter } from './types';
 import { StorageService } from './services/storage';
 import { MonitoringEngine } from './services/monitoringEngine';
@@ -8,6 +8,7 @@ import { ProviderBadge } from './components/common/ProviderBadge';
 import { MonitorModal } from './components/modals/MonitorModal';
 import { DeleteModal } from './components/modals/DeleteModal';
 import { UptimeOverviewCard } from './components/dashboard/UptimeOverviewCard';
+import { SplashScreen } from './components/common/SplashScreen';
 import { formatRelativeTime, getExpiryCountdownIST } from './utils/metrics';
 import { CustomDropdown, DropdownOption } from './components/common/CustomDropdown';
 import { 
@@ -43,30 +44,29 @@ export const App: React.FC = () => {
   const [monitorToEdit, setMonitorToEdit] = useState<Monitor | null>(null);
   const [monitorToDelete, setMonitorToDelete] = useState<Monitor | null>(null);
 
+  // Splash opening animation
+  const [showSplash, setShowSplash] = useState(true);
+
   // GSAP Animation Ref
   const containerRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion || !containerRef.current) return;
-
-    const ctx = gsap.context(() => {
+  const handleSplashFinish = useCallback(() => {
+    setShowSplash(false);
+    if (containerRef.current) {
       gsap.fromTo(
         containerRef.current,
-        { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }
       );
-      if (cardsRef.current && cardsRef.current.children.length > 0) {
-        gsap.fromTo(
-          Array.from(cardsRef.current.children),
-          { opacity: 0, y: 15 },
-          { opacity: 1, y: 0, duration: 0.35, stagger: 0.05, ease: 'power2.out', delay: 0.1 }
-        );
-      }
-    });
+    }
+  }, []);
 
-    return () => ctx.revert();
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setShowSplash(false);
+    }
   }, []);
 
   // Live 5s countdown & silent background sync
@@ -202,7 +202,9 @@ export const App: React.FC = () => {
   }, [monitors, search, statusFilter, typeFilter]);
 
   return (
-    <div className="min-h-screen bg-[#000000] text-white flex flex-col antialiased selection:bg-[#9929EA] selection:text-white">
+    <>
+      {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
+      <div className="min-h-screen bg-[#000000] text-white flex flex-col antialiased selection:bg-[#9929EA] selection:text-white">
       {/* Top Header */}
       <header className="border-b border-[#242424] bg-[#000000] sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
@@ -578,7 +580,8 @@ export const App: React.FC = () => {
         onClose={() => setMonitorToDelete(null)}
         onConfirm={handleConfirmDelete}
       />
-    </div>
+      </div>
+    </>
   );
 };
 
