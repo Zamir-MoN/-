@@ -270,14 +270,12 @@ export const App: React.FC = () => {
       <header className="border-b border-[#242424] bg-[#000000] sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
           {/* Logo & Title */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden border border-[#242424] bg-[#080808] flex items-center justify-center shadow-glow-purple flex-shrink-0">
-              <img 
-                src="/logo.png" 
-                alt="Pengo Stats Logo" 
-                className="w-full h-full object-contain p-0.5" 
-              />
-            </div>
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <img 
+              src="/logo.png" 
+              alt="Pengo Stats Logo" 
+              className="w-8 h-8 sm:w-9 sm:h-9 object-contain flex-shrink-0 filter drop-shadow-[0_0_8px_rgba(8,203,0,0.5)]" 
+            />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-white tracking-tight text-sm sm:text-base truncate">

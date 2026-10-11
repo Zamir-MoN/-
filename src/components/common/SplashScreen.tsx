@@ -201,15 +201,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             />
           </svg>
 
-          {/* Central Logo Box */}
+          {/* Central Logo (Pure Logo, No Card Container) */}
           <div
             ref={logoBoxRef}
-            className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#080808] border border-[#242424] flex items-center justify-center p-2.5 shadow-[0_0_30px_rgba(153,41,234,0.4)] relative z-10"
+            className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center relative z-10"
           >
             <img
               src="/logo.png"
               alt="Pengo Stats"
-              className="w-full h-full object-contain filter drop-shadow-[0_0_10px_rgba(8,203,0,0.5)]"
+              className="w-full h-full object-contain filter drop-shadow-[0_0_16px_rgba(8,203,0,0.7)]"
             />
           </div>
         </div>
